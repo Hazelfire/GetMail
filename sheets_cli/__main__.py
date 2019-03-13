@@ -8,6 +8,7 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from oauth2client import file, client, tools
+from . import SheetsApi
 import sys
 
 # If modifying these scopes, delete the file token.pickle.
@@ -30,7 +31,11 @@ creds = None
 
 
 def get_profiles():
-    return [name.split(".")[0] for x in os.listdir(profiles_dir)]
+    return [name.split(".")[0] for name in os.listdir(profiles_dir)]
+
+
+def get_profile_path(name):
+    return profiles_dir + name + ".json"
 
 
 @click.option("--profile", help="The profile you want to run as")
@@ -41,7 +46,7 @@ def cli(profile):
     if profiles:
         if not profile:
             profile = profiles[0]
-        creds = file.Storage(profile_file).get()
+        creds = file.Storage(get_profile_path(profile)).get()
 
 
 @click.option("--name", help="Name of the profile you want to create")
@@ -58,6 +63,16 @@ def new_profile(name):
         creds = tools.run_flow(flow, store, flags=parser.parse_args([]))
     else:
         click.echo("profile exists")
+
+
+@click.option("--sheet", help="Id of the sheet you want to detail")
+@cli.command()
+def describe(sheet):
+    api = SheetsApi(creds)
+    result = api.get_sheet(sheet)
+    click.echo("{} ({})\nSheets:\n{}".format(
+        result["properties"]["title"], sheet, "\n".join(
+            [sheet["properties"]["title"] for sheet in result["sheets"]])))
 
 
 if __name__ == "__main__":
