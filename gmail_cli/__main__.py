@@ -42,6 +42,12 @@ def cli():
     pass
 
 
+def print_subject(message):
+    subject = [header for header in message['payload']
+               ['headers'] if header['name'] == 'Subject']
+    click.echo("{} - {}".format(message['id'], subject[0]['value']))
+
+
 @cli.command()
 @click.option('--unread', '-u', is_flag=True)
 def list(unread):
@@ -50,14 +56,30 @@ def list(unread):
     batch = service.new_batch_http_request()
 
     def print_email(_, response, __):
-        for message in response['messages']:
-            subject = [header for header in message['payload']
-                       ['headers'] if header['name'] == 'Subject']
-            print(subject[0]['value'])
+        for message in message["messages"]:
+            print_subject(message)
 
     for thread in service.users().threads().list(userId='me', q='is:unread' if unread else '').execute().get('threads', []):
         tdata = service.users().threads().get(userId='me', id=thread['id'])
         batch.add(tdata, callback=print_email)
+    batch.execute()
+
+
+@cli.command()
+@click.argument('query')
+def search(query):
+    service = get_service()
+
+    batch = service.new_batch_http_request()
+
+    def print_email(_, response, __):
+        print_subject(response)
+
+    messages = service.users().messages().list(userId='me', q=query).execute()
+    for message in messages["messages"]:
+        mdata = service.users().messages().get(userId='me', id=message['id'])
+        batch.add(mdata, callback=print_email)
+
     batch.execute()
 
 
