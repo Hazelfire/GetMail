@@ -75,6 +75,14 @@ def describe(sheet):
             [sheet["properties"]["title"] for sheet in result["sheets"]])))
 
 
+@click.option("--sheet", help="The id of the sheet you want to get values from")
+@click.option("--range", help="The range that you want to get values from")
+@cli.command()
+def get(sheet, range):
+    api = SheetsApi(creds)
+    result = api.get_sheet(sheet)
+
+
 if __name__ == "__main__":
     sys.exit(cli())
 

@@ -6,13 +6,19 @@ import sys
 import os
 import argparse
 from datetime import datetime, timedelta
-from googleapiclient.discovery import build
-from google_cli import make_google_parser, decorate_arguments
-from httplib2 import Http
 from oauth2client import file, client, tools
-from . import Config, CalendarApi
+from httplib2 import Http
+
+import docopt
+from googleapiclient.discovery import build
+from google_cli import Config
+
+from . import Config
 
 SCOPES = 'https://www.googleapis.com/auth/calendar'
+CONF_DIR = os.path.expanduser("~/.config/calendar/")
+PROFILES_DIR = CONF_DIR + "profiles/"
+CREDENTIALS_FILE = CONF_DIR + "credentials.json"
 
 
 def selected_calendar_from_args(args):
@@ -22,6 +28,17 @@ def selected_calendar_from_args(args):
         return args.config.get_selected_calendar()
 
 
+def get_creds(profile, conf):
+    """ Gets credentials for a particular profile """
+    if profile:
+        store = file.Storage(conf.get_profile(profile))
+        return store.get()
+    elif len(conf.list_profiles()) > 0:
+        store = file.Storage(conf.get_profile(conf.list_profiles()[0]))
+        return store.get()
+    else:
+        return None
+
 def build_service(creds):
     return build('calendar', 'v3', http=creds.authorize(Http()))
 
@@ -30,7 +47,8 @@ def print_events(_, response, error):
     events = response["items"]
     for event in events:
         if "summary" in event:
-            print("{} - {}".format(event["id"], event["summary"]))
+            print("{}: {}".format(event["id"], event["summary"]))
+
 
 
 def print_event(event):
@@ -41,6 +59,25 @@ def print_event(event):
     print("{}\nFrom {} to {}\nLocation: {}\n{}".format(
         event["summary"], start_time, end_time, location, description))
 
+
+def new_profile_command(subparsers):
+    newprofile = subparsers.add_parser(
+        "newprofile", help="Creates a new profile")
+    newprofile.add_argument("name", help="The name of your new profile")
+
+    def run(args):
+        profile_file = PROFILES_DIR + args.name + '.json'
+        store = file.Storage(profile_file)
+        if not os.path.isfile(profile_file):
+            flow = client.flow_from_clientsecrets(CREDENTIALS_FILE, SCOPES)
+            parser = argparse.ArgumentParser(
+                description=__doc__,
+                formatter_class=argparse.RawDescriptionHelpFormatter,
+                parents=[tools.argparser])
+            creds = tools.run_flow(flow, store, flags=parser.parse_args([]))
+        else:
+            print("profile exists")
+    newprofile.set_defaults(run=run)
 
 def calendars_command(subparsers):
     """ lists available calendars """
@@ -164,11 +201,21 @@ def select_command(subparsers):
 def create_parser():
     """ Creates the main parser """
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(help="subcommands help")
-    make_google_parser(parser, subparsers)
+
+    parser.add_argument(
+        "-p",
+        "--profile",
+        help="The profile that you want to use")
+
+    parser.add_argument(
+        "-C",
+        "--config",
+        help="The config directory")
 
     parser.add_argument(
         "-s", "--select", help="Select a calendar to apply to")
+
+    subparsers = parser.add_subparsers(help="subcommands help")
 
     calendars_command(subparsers)
     list_command(subparsers)
@@ -177,6 +224,7 @@ def create_parser():
     edit_command(subparsers)
     new_command(subparsers)
     select_command(subparsers)
+    new_profile_command(subparsers)
     return parser
 
 
@@ -184,18 +232,24 @@ def calendar_decorate_args(args):
     """ Decorates the arguments object with richer objects """
 
     if not args.config:
-        args.config = os.path.expanduser("~/.config/calendar/")
-    args = decorate_arguments(args, Config)
+        args.config = Config(CONF_DIR)
     args.select = selected_calendar_from_args(args)
     return args
 
 
+
+docs = """
+Usage: calendar today
+"""
+
 def main():
     """ Main Module """
+
     parser = create_parser()
     args = parser.parse_args()
     args = calendar_decorate_args(args)
     args.select = selected_calendar_from_args(args)
+    args.profile = get_creds(args.profile, args.config)
 
     if not args.config.has_credentials_file():
         print("Please put your credentials.json at {}".format(

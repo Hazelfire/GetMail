@@ -2,7 +2,9 @@ import click
 import sys
 import os
 import pickle
+import yaml
 import os.path
+import base64
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
@@ -63,6 +65,15 @@ def list(unread):
         tdata = service.users().threads().get(userId='me', id=thread['id'])
         batch.add(tdata, callback=print_email)
     batch.execute()
+
+
+@cli.command()
+@click.argument('id')
+def cat(id):
+    service = get_service()
+    mdata = service.users().messages().get(userId='me', id=id).execute()
+    print(yaml.dump(mdata["payload"]["headers"]))
+    # print((mdata["payload"]["body"]["data"]))
 
 
 @cli.command()

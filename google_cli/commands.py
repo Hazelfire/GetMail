@@ -9,9 +9,11 @@ def get_creds(profile, conf):
     if profile:
         store = file.Storage(conf.get_profile(profile))
         return store.get()
-    else:
+    elif len(conf.list_profiles()) > 0:
         store = file.Storage(conf.get_profile(conf.list_profiles()[0]))
         return store.get()
+    else:
+        return None
 
 
 def new_profile_action(args):

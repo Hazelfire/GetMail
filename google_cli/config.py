@@ -23,6 +23,7 @@ class Config:
         return [path.split(".")[0] for path in os.listdir(self.profiles_dir)]
 
     def get_profile(self, profile):
+        """ Gets the profile from the config """
         return self.profiles_dir + profile + ".json"
 
     def has_credentials_file(self):
