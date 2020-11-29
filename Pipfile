@@ -7,6 +7,9 @@ verify_ssl = true
 
 [packages]
 click = "*"
+oauth2client = "*"
+google-api-python-client = "*"
+google-auth-oauthlib = "*"
 
 [requires]
 python_version = "3.7"

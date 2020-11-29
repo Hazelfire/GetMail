@@ -65,22 +65,43 @@ def new_profile(name):
         click.echo("profile exists")
 
 
-@click.option("--sheet", help="Id of the sheet you want to detail")
+@click.argument("sheet")
 @cli.command()
 def describe(sheet):
     api = SheetsApi(creds)
     result = api.get_sheet(sheet)
+    print(result)
     click.echo("{} ({})\nSheets:\n{}".format(
         result["properties"]["title"], sheet, "\n".join(
             [sheet["properties"]["title"] for sheet in result["sheets"]])))
 
 
-@click.option("--sheet", help="The id of the sheet you want to get values from")
-@click.option("--range", help="The range that you want to get values from")
+@cli.command()
+def list():
+    api = SheetsApi(creds)
+    result = api.get_sheets()
+    
+@click.argument("range")
+@click.argument("sheet")
 @cli.command()
 def get(sheet, range):
     api = SheetsApi(creds)
-    result = api.get_sheet(sheet)
+    result = api.get_range(sheet, range)
+    to_csv(result["values"])
+
+def get_widths(array):
+    max_width = max([len(row) for row in array])
+    widths = [0 for x in range(max_width)]
+    for col in range(max_width):
+        for row in array:
+            if len(row) > col:
+                widths[col] = max(widths[col], len(str(row[col])))
+    return widths
+
+def to_csv(array):
+    widths = get_widths(array)
+    for row in array:
+        print(", ".join([row[i].rjust(widths[i]) for i in range(len(row))]))
 
 
 if __name__ == "__main__":

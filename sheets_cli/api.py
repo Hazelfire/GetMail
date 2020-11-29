@@ -12,3 +12,6 @@ class SheetsApi:
     def get_sheet(self, sheet_id):
         sheet = self.service.spreadsheets()
         return sheet.get(spreadsheetId=sheet_id).execute()
+    
+    def get_range(self, sheet_id, range_id):
+        return self.service.spreadsheets().values().get(spreadsheetId=sheet_id, range=range_id).execute()
